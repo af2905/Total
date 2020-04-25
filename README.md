@@ -2,7 +2,7 @@
 The goal is to learn how to work with files.
 The application displays a list of directories.
 
-![Image of Yaktocat](https://github.com/af2905/Job4j-Exam/blob/master/app/images/total.png)
+![Image of Yaktocat](https://github.com/af2905/Total/blob/master/app/images/total.png)
 
 After clicking on the directories, we go to the nested list of directories or files.
 When you click on the arrow, we go to the forward directory.

@@ -10,16 +10,22 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class TotalFragment extends Fragment {
-    private RecyclerView.Adapter<RecyclerView.ViewHolder> adapter;
+    private FileModelAdapter adapter;
     private RecyclerView recycler;
+    private List<String> listOfPaths = new ArrayList<>();
+    private int count = 0;
 
     @Nullable
     @Override
@@ -29,18 +35,31 @@ public class TotalFragment extends Fragment {
         recycler = view.findViewById(R.id.recycler);
         recycler.setHasFixedSize(true);
         recycler.setLayoutManager(new LinearLayoutManager(getActivity()));
-        List<FileModel> list = FilesTree.getInstance()
-                .filesList(Environment.getExternalStorageDirectory().getAbsolutePath());
-        adapter = new FileModelAdapter(list);
+        AppCompatActivity activity = (AppCompatActivity) getActivity();
+        File directory = Environment.getExternalStorageDirectory();
+        listOfPaths.add(directory.getAbsolutePath());
+        File[] files = directory.listFiles();
+        Toolbar toolbar = view.findViewById(R.id.toolbar);
+        if (activity != null) {
+            activity.setSupportActionBar(toolbar);
+            Objects.requireNonNull(activity.getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
+        }
+        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                adapter.back();
+            }
+        });
+        adapter = new FileModelAdapter(files);
         recycler.setAdapter(adapter);
         return view;
     }
 
     private final class FileModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-        private List<FileModel> filesList;
+        File[] files;
 
-        FileModelAdapter(List<FileModel> filesList) {
-            this.filesList = filesList;
+        FileModelAdapter(File[] files) {
+            this.files = files;
         }
 
         @NonNull
@@ -53,30 +72,41 @@ public class TotalFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull final RecyclerView.ViewHolder holder, final int position) {
-            final FileModel fileModel = filesList.get(position);
+            File file = files[position];
+            final String absolutePath = file.getAbsolutePath();
             final TextView name = holder.itemView.findViewById(R.id.name);
-            name.setText(fileModel.getName());
-
+            name.setText(file.getName());
             name.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    File file = new File(fileModel.getAbsolutePath());
+                    File file = new File(absolutePath);
                     if (file.isDirectory()) {
                         Toast.makeText(getContext(), "Directory", Toast.LENGTH_SHORT).show();
-                        filesList = FilesTree.getInstance()
-                                .filesList(fileModel.getAbsolutePath());
-                        notifyDataSetChanged();
+                        listOfPaths.add(absolutePath);
+                        update(absolutePath);
+                        count++;
                     }
                 }
             });
-
         }
 
         @Override
         public int getItemCount() {
-            return filesList.size();
+            return files.length;
+        }
+
+        void back() {
+            if (count > 0) {
+                count--;
+                update(listOfPaths.get(count));
+            }
+        }
+
+        private void update(String path) {
+            File file = new File(path);
+            files = file.listFiles();
+            notifyDataSetChanged();
         }
     }
-
 }
 

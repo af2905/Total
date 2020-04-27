@@ -1,5 +1,8 @@
 package ru.job4j.total;
 
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.LayoutInflater;
@@ -12,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -25,6 +29,7 @@ public class TotalFragment extends Fragment {
     private FileModelAdapter adapter;
     private RecyclerView recycler;
     private List<String> listOfPaths = new ArrayList<>();
+    private Context context;
     private int count = 0;
 
     @Nullable
@@ -32,6 +37,7 @@ public class TotalFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.files_tree, container, false);
+        context = getContext();
         recycler = view.findViewById(R.id.recycler);
         recycler.setHasFixedSize(true);
         recycler.setLayoutManager(new LinearLayoutManager(getActivity()));
@@ -81,10 +87,13 @@ public class TotalFragment extends Fragment {
                 public void onClick(View v) {
                     File file = new File(absolutePath);
                     if (file.isDirectory()) {
-                        Toast.makeText(getContext(), "Directory", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), R.string.directory, Toast.LENGTH_SHORT).show();
                         listOfPaths.add(absolutePath);
                         update(absolutePath);
                         count++;
+                    }
+                    if (file.isFile()) {
+                        playMusic(file);
                     }
                 }
             });
@@ -106,6 +115,15 @@ public class TotalFragment extends Fragment {
             File file = new File(path);
             files = file.listFiles();
             notifyDataSetChanged();
+        }
+
+        private void playMusic(File file) {
+            Uri uri = FileProvider.getUriForFile(
+                    context, BuildConfig.APPLICATION_ID + ".provider", file);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, "audio/*");
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(intent);
         }
     }
 }

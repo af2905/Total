@@ -21,15 +21,21 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public class TotalFragment extends Fragment {
     private FileModelAdapter adapter;
-    private RecyclerView recycler;
     private List<String> listOfPaths = new ArrayList<>();
     private Context context;
+    private AppCompatActivity activity;
     private int count = 0;
 
     @Nullable
@@ -38,17 +44,17 @@ public class TotalFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.files_tree, container, false);
         context = getContext();
-        recycler = view.findViewById(R.id.recycler);
+        RecyclerView recycler = view.findViewById(R.id.recycler);
         recycler.setHasFixedSize(true);
         recycler.setLayoutManager(new LinearLayoutManager(getActivity()));
-        AppCompatActivity activity = (AppCompatActivity) getActivity();
+        activity = (AppCompatActivity) getActivity();
         File directory = Environment.getExternalStorageDirectory();
         listOfPaths.add(directory.getAbsolutePath());
         File[] files = directory.listFiles();
         Toolbar toolbar = view.findViewById(R.id.toolbar);
         if (activity != null) {
             activity.setSupportActionBar(toolbar);
-            Objects.requireNonNull(activity.getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
+
         }
         toolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
@@ -63,6 +69,7 @@ public class TotalFragment extends Fragment {
 
     private final class FileModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         File[] files;
+        TextView created, size;
 
         FileModelAdapter(File[] files) {
             this.files = files;
@@ -80,8 +87,16 @@ public class TotalFragment extends Fragment {
         public void onBindViewHolder(@NonNull final RecyclerView.ViewHolder holder, final int position) {
             File file = files[position];
             final String absolutePath = file.getAbsolutePath();
-            final TextView name = holder.itemView.findViewById(R.id.name);
+            final TextView name = holder.itemView.findViewById(R.id.file_name);
+            created = holder.itemView.findViewById(R.id.file_created);
+            size = holder.itemView.findViewById(R.id.file_size);
             name.setText(file.getName());
+            if (file.isFile()) {
+                addBasicFileAttributes(absolutePath);
+            } else {
+                created.setText(null);
+                size.setText(null);
+            }
             name.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -91,6 +106,8 @@ public class TotalFragment extends Fragment {
                         listOfPaths.add(absolutePath);
                         update(absolutePath);
                         count++;
+
+                        Objects.requireNonNull(activity.getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
                     }
                     if (file.isFile()) {
                         playMusic(file);
@@ -106,13 +123,18 @@ public class TotalFragment extends Fragment {
 
         void back() {
             if (count > 0) {
+                int temp = count;
                 count--;
                 update(listOfPaths.get(count));
+                listOfPaths.remove(temp);
+                if (count == 0) {
+                    Objects.requireNonNull(activity.getSupportActionBar()).setDisplayHomeAsUpEnabled(false);
+                }
             }
         }
 
-        private void update(String path) {
-            File file = new File(path);
+        private void update(String absolutePath) {
+            File file = new File(absolutePath);
             files = file.listFiles();
             notifyDataSetChanged();
         }
@@ -124,6 +146,26 @@ public class TotalFragment extends Fragment {
             intent.setDataAndType(uri, "audio/*");
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(intent);
+        }
+
+        private void addBasicFileAttributes(String absolutePath) {
+            BasicFileAttributes basicFileAttributes = null;
+            FileTime create;
+            long dateCreated = 0;
+            int fileSize = 0;
+            Path path = Paths.get(absolutePath);
+            try {
+                basicFileAttributes = Files.readAttributes(path, BasicFileAttributes.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (basicFileAttributes != null) {
+                create = basicFileAttributes.creationTime();
+                dateCreated = create.toMillis();
+                fileSize = (int) basicFileAttributes.size();
+            }
+            created.setText(Utils.getDate(dateCreated));
+            size.setText(String.valueOf(fileSize));
         }
     }
 }

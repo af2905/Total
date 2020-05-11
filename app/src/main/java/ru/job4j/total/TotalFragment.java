@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,6 +30,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.disposables.Disposable;
+
 public class TotalFragment extends Fragment {
     private FileModelAdapter adapter;
     private List<String> listOfPaths = new ArrayList<>();
@@ -44,17 +47,14 @@ public class TotalFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.files_tree, container, false);
         context = getContext();
+        activity = (AppCompatActivity) getActivity();
         RecyclerView recycler = view.findViewById(R.id.recycler);
         recycler.setHasFixedSize(true);
         recycler.setLayoutManager(new LinearLayoutManager(getActivity()));
-        activity = (AppCompatActivity) getActivity();
-        File directory = Environment.getExternalStorageDirectory();
-        listOfPaths.add(directory.getAbsolutePath());
-        File[] files = directory.listFiles();
+        listOfPaths.add(FilesRepo.ABSOLUTE_PATH);
         Toolbar toolbar = view.findViewById(R.id.toolbar);
         if (activity != null) {
             activity.setSupportActionBar(toolbar);
-
         }
         toolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
@@ -62,9 +62,38 @@ public class TotalFragment extends Fragment {
                 adapter.back();
             }
         });
-        adapter = new FileModelAdapter(files);
+        adapter = new FileModelAdapter(getFiles());
         recycler.setAdapter(adapter);
         return view;
+    }
+
+    private File[] getFiles() {
+        FilesRepo filesRepo = new FilesRepo();
+        final ArrayList<File> list = new ArrayList<>();
+        Observable<File> observable = Observable.fromArray(filesRepo.getFiles());
+        Observer<File> observer = new Observer<File>() {
+            @Override
+            public void onSubscribe(Disposable d) {
+
+            }
+
+            @Override
+            public void onNext(File file) {
+                list.add(file);
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        };
+        observable.subscribe(observer);
+        return list.toArray(new File[0]);
     }
 
     private final class FileModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -106,11 +135,12 @@ public class TotalFragment extends Fragment {
                         listOfPaths.add(absolutePath);
                         update(absolutePath);
                         count++;
-
                         Objects.requireNonNull(activity.getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
                     }
                     if (file.isFile()) {
-                        playMusic(file);
+                        if (file.getName().contains(".mp3")) {
+                            playMusic(file);
+                        }
                     }
                 }
             });

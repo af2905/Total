@@ -17,7 +17,5 @@ public class TotalActivity extends AppCompatActivity {
                     .add(R.id.content, new TotalFragment())
                     .commit();
         }
-
-
     }
 }
